@@ -135,6 +135,8 @@ class xlstm_train_test:
 
         self.min_loss = 1
         self.test_f1 = 0
+        self.patience = 10
+        self.waiting = 0
 
         self.output_dir = output_dir
         os.makedirs(self.output_dir, exist_ok=True)
@@ -144,7 +146,7 @@ class xlstm_train_test:
         self.feature_type = feature_type
         self.input_component = input_component
         self.scheduler = scheduler
-        self.warmup_scheduler = warmup_scheduler
+        # self.warmup_scheduler = warmup_scheduler
 
     def _save_checkpoint(self, epoch):
         ckp = self.model.state_dict()
@@ -268,7 +270,7 @@ class xlstm_train_test:
 
             if f1 > self.test_f1:
                 self.test_f1 = f1
-
+                self.waiting += 0
                 self._save_output(tensor_temp, "testing")
 
                 visualize_confusion_matrix(self.output_dir, tensor_temp[:, 1].detach().cpu().numpy(),
@@ -278,6 +280,7 @@ class xlstm_train_test:
                       f"{self.input_station}, {self.model_type}, {self.feature_type}, {self.input_component}, "
                       f"F1, {f1}")
             else:
+                self.waiting += 1 
                 print(f"Nothing saved, Testing at {epoch}, f1={f1} < self.test_f1={self.test_f1}")
 
         return val_loss
@@ -319,16 +322,20 @@ class xlstm_train_test:
 
 
     def activation(self, num_epoch=100):
-
+        print(f"{'Start Training':-^50}")
+        
         for epoch in range(num_epoch): # loop 50 times for training
             self.training(epoch) # train the model every epoch
 
             val_loss = self.testing(epoch)
-
-            if epoch < 5:
-                # warmup learning rate
-                self.warmup_scheduler.step(epoch)
-            else:
-                # reduce learning rate if the validation loss does not improve
-                self.scheduler.step(val_loss)
+            self.scheduler.step(val_loss)
+            # if epoch < 5:
+            #     # warmup learning rate
+            #     self.warmup_scheduler.step()
+            # else:
+            #     # reduce learning rate if the validation loss does not improve
+            #     self.scheduler.step(val_loss)
             print(f"LR: {self.optimizer.param_groups[0]['lr']}")
+            if self.waiting > self.patience:
+                print(f"{'Early Stopping':-^50}")
+                break
