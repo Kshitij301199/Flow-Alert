@@ -67,14 +67,14 @@ def main(output_dir, input_station, model_type, feature_type, input_component, s
 
     # load model
     if model_type == 'xLSTM':
-        train_model = xlstm_classifier(feature_size=map_feature_size.get(feature_type), device=device,
-                                       num_blocks=2, slstm_at=[1], dropout=0.1)
+        train_model = xlstm_classifier(feature_size=map_feature_size.get(feature_type), device=device, hidden_size=384,
+                                       num_blocks=2, slstm_at=[1], dropout=0.1, context_length=seq_length)
     elif model_type == 'sLSTM':
-        train_model = xlstm_classifier(feature_size=map_feature_size.get(feature_type), device=device,
-                                       num_blocks=1, slstm_at=[0], dropout=0.1)
+        train_model = xlstm_classifier(feature_size=map_feature_size.get(feature_type), device=device, hidden_size=384,
+                                       num_blocks=1, slstm_at=[0], dropout=0.1, context_length=seq_length)
     elif model_type == 'mLSTM':
-        train_model = xlstm_classifier(feature_size=map_feature_size.get(feature_type), device=device,
-                                       num_blocks=1, slstm_at=[], dropout=0.1)
+        train_model = xlstm_classifier(feature_size=map_feature_size.get(feature_type), device=device, hidden_size=384,
+                                       num_blocks=1, slstm_at=[], dropout=0.1, context_length=seq_length)
     summary(model=train_model,
             input_size=(batch_size, seq_length, map_feature_size.get(feature_type)),
             col_names=("input_size", "output_size", "num_params", "params_percent", "trainable"),
@@ -84,8 +84,8 @@ def main(output_dir, input_station, model_type, feature_type, input_component, s
     optimizer = torch.optim.Adam(train_model.parameters(), lr=0.0001)
     # Define scheduler: Reduce the LR by factor of 0.1 when the metric (like loss) stops improving
     scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=3)
-    # warmup_scheduler = optim.lr_scheduler.LambdaLR(optimizer, lr_lambda=warmup_lambda)
-    warmup_scheduler = None
+    warmup_scheduler = optim.lr_scheduler.LambdaLR(optimizer, lr_lambda=warmup_lambda)
+    # warmup_scheduler = None
 
     # train and test
     trainer = xlstm_train_test(train_model,

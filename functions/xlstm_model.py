@@ -146,7 +146,7 @@ class xlstm_train_test:
         self.feature_type = feature_type
         self.input_component = input_component
         self.scheduler = scheduler
-        # self.warmup_scheduler = warmup_scheduler
+        self.warmup_scheduler = warmup_scheduler
 
     def _save_checkpoint(self, epoch):
         ckp = self.model.state_dict()
@@ -328,13 +328,13 @@ class xlstm_train_test:
             self.training(epoch) # train the model every epoch
 
             val_loss = self.testing(epoch)
-            self.scheduler.step(val_loss)
-            # if epoch < 5:
-            #     # warmup learning rate
-            #     self.warmup_scheduler.step()
-            # else:
-            #     # reduce learning rate if the validation loss does not improve
-            #     self.scheduler.step(val_loss)
+            # self.scheduler.step(val_loss)
+            if epoch < 5:
+                # warmup learning rate
+                self.warmup_scheduler.step()
+            else:
+                # reduce learning rate if the validation loss does not improve
+                self.scheduler.step(val_loss)
             print(f"LR: {self.optimizer.param_groups[0]['lr']}")
             if self.waiting > self.patience:
                 print(f"{'Early Stopping':-^50}")
