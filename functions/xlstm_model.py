@@ -270,7 +270,7 @@ class xlstm_train_test:
 
             if f1 > self.test_f1:
                 self.test_f1 = f1
-                self.waiting += 0
+                self.waiting = 0
                 self._save_output(tensor_temp, "testing")
 
                 visualize_confusion_matrix(self.output_dir, tensor_temp[:, 1].detach().cpu().numpy(),
@@ -329,13 +329,14 @@ class xlstm_train_test:
 
             val_loss = self.testing(epoch)
             # self.scheduler.step(val_loss)
-            if epoch < 5:
+            if epoch < 3:
                 # warmup learning rate
                 self.warmup_scheduler.step()
+                self.waiting = 0
             else:
                 # reduce learning rate if the validation loss does not improve
-                self.scheduler.step(val_loss)
-            print(f"LR: {self.optimizer.param_groups[0]['lr']}")
+                self.scheduler.step(self.test_f1)
+            print(f"Patience: {self.waiting}/{self.patience} \t LR: {self.optimizer.param_groups[0]['lr']}")
             if self.waiting > self.patience:
                 print(f"{'Early Stopping':-^50}")
                 break

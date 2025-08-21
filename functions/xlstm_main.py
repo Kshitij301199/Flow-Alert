@@ -27,8 +27,10 @@ from dataset2dataloader import *
 from xlstm_model import *
 from check_undetected_events import summary_results
 
+from collections import Counter
+
 def warmup_lambda(epoch):
-    warmup_epochs = 5
+    warmup_epochs = 3
     return min(1.0, (epoch + 1) / warmup_epochs)
 
 def main(output_dir, input_station, model_type, feature_type, input_component, seq_length, batch_size):
@@ -46,7 +48,7 @@ def main(output_dir, input_station, model_type, feature_type, input_component, s
     input_data_year = [2020]
     input_features_name, X_test, y_test, time_stamps_test, _ = select_features(input_station, feature_type,
                                                                                input_component, "testing", input_data_year)
-
+    print(f"Y-Label Test : {Counter(y_test)}")
     if data_normalize is True:
         X_train, X_test = input_data_normalize(X_train, X_test)
         X_train = pd.DataFrame(X_train, columns=input_features_name)
@@ -67,14 +69,14 @@ def main(output_dir, input_station, model_type, feature_type, input_component, s
 
     # load model
     if model_type == 'xLSTM':
-        train_model = xlstm_classifier(feature_size=map_feature_size.get(feature_type), device=device, hidden_size=384,
-                                       num_blocks=2, slstm_at=[1], dropout=0.1, context_length=seq_length)
+        train_model = xlstm_classifier(feature_size=map_feature_size.get(feature_type), device=device, hidden_size=256,
+                                       num_blocks=2, slstm_at=[1], dropout=0.1, context_length=seq_length, num_layers=1)
     elif model_type == 'sLSTM':
-        train_model = xlstm_classifier(feature_size=map_feature_size.get(feature_type), device=device, hidden_size=384,
-                                       num_blocks=1, slstm_at=[0], dropout=0.1, context_length=seq_length)
+        train_model = xlstm_classifier(feature_size=map_feature_size.get(feature_type), device=device, hidden_size=256,
+                                       num_blocks=1, slstm_at=[0], dropout=0.1, context_length=seq_length, num_layers=1)
     elif model_type == 'mLSTM':
-        train_model = xlstm_classifier(feature_size=map_feature_size.get(feature_type), device=device, hidden_size=384,
-                                       num_blocks=1, slstm_at=[], dropout=0.1, context_length=seq_length)
+        train_model = xlstm_classifier(feature_size=map_feature_size.get(feature_type), device=device, hidden_size=256,
+                                       num_blocks=1, slstm_at=[], dropout=0.1, context_length=seq_length, num_layers=1)
     summary(model=train_model,
             input_size=(batch_size, seq_length, map_feature_size.get(feature_type)),
             col_names=("input_size", "output_size", "num_params", "params_percent", "trainable"),
@@ -83,7 +85,7 @@ def main(output_dir, input_station, model_type, feature_type, input_component, s
     train_model.to(device)
     optimizer = torch.optim.Adam(train_model.parameters(), lr=0.0001)
     # Define scheduler: Reduce the LR by factor of 0.1 when the metric (like loss) stops improving
-    scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=3)
+    scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='max', factor=0.2, patience=3)
     warmup_scheduler = optim.lr_scheduler.LambdaLR(optimizer, lr_lambda=warmup_lambda)
     # warmup_scheduler = None
 
